@@ -90,7 +90,9 @@ export default {
       raw: '原始值',
       status: '状态'
     },
-    loading: '加载磁盘数据中…'
+    loading: '加载磁盘数据中…',
+    networkMounts: '网络挂载',
+    remote: '远程路径'
   },
   settings: {
     title: '设置',

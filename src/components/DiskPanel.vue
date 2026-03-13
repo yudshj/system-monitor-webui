@@ -2,7 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
-import { HardDrive, RotateCw, Copy, Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
+import { HardDrive, RotateCw, Copy, Check, ChevronDown, ChevronRight, Network } from 'lucide-vue-next'
 
 const metrics = useMetricsStore()
 const { t } = useI18n()
@@ -123,6 +123,22 @@ async function copyRaw(text, key) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+      <!-- Network Mounts -->
+      <div class="section" v-if="metrics.disk?.networkMounts?.length">
+        <h3><Network :size="16" style="vertical-align: -3px; margin-right: 6px;" />{{ t('disk.networkMounts') }}</h3>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>{{ t('disk.mount') }}</th><th>{{ t('disk.type') }}</th><th>{{ t('disk.remote') }}</th></tr></thead>
+            <tbody>
+              <tr v-for="nm in metrics.disk.networkMounts" :key="nm.mount">
+                <td class="mono">{{ nm.mount }}</td>
+                <td><span class="status-badge network">{{ nm.type }}</span></td>
+                <td class="mono" style="font-size: 0.85em; opacity: 0.8;">{{ nm.remote }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
       <div class="card-placeholder" v-if="!metrics.disk">{{ t('disk.loading') }}</div>

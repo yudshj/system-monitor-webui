@@ -90,7 +90,9 @@ export default {
       raw: 'Raw',
       status: 'Status'
     },
-    loading: 'Loading Disk data…'
+    loading: 'Loading Disk data…',
+    networkMounts: 'Network Mounts',
+    remote: 'Remote'
   },
   settings: {
     title: 'Settings',

@@ -212,20 +212,94 @@ export async function collectIp() {
   return { publicIPv4: ipv4, publicIPv6: ipv6, tailscale: tsStatus, timestamp: Date.now() }
 }
 
+// Network filesystem types to skip size collection for
+const NETWORK_FS_TYPES = new Set([
+  'smbfs', 'cifs', 'nfs', 'nfs4', 'nfs3', 'afpfs', 'webdavfs',
+  'fuse.sshfs', 'fuse.rclone', 'ftp', '9p'
+])
+
+/**
+ * Parse `df -Pl` output (POSIX format, local filesystems only).
+ * Skips network mounts entirely to avoid hangs on unreachable shares.
+ */
+export function parseDfOutput(output) {
+  if (!output) return []
+  const lines = output.split('\n').filter(Boolean)
+  // Skip header line
+  return lines.slice(1).map(line => {
+    // POSIX format: Filesystem 1024-blocks Used Available Capacity Mounted-on
+    const parts = line.split(/\s+/)
+    if (parts.length < 6) return null
+    const mount = parts.slice(5).join(' ')
+    const size = parseInt(parts[1]) * 1024
+    const used = parseInt(parts[2]) * 1024
+    const available = parseInt(parts[3]) * 1024
+    const usePercent = parseFloat(parts[4])
+    return {
+      mount,
+      type: '',  // df -P doesn't show type; filled in later
+      size: isNaN(size) ? 0 : size,
+      used: isNaN(used) ? 0 : used,
+      available: isNaN(available) ? 0 : available,
+      usePercent: isNaN(usePercent) ? 0 : usePercent,
+      fs: parts[0]
+    }
+  }).filter(Boolean)
+}
+
+/**
+ * Parse `mount` output to detect network mounts.
+ * Returns display-only entries (no size collection to avoid hangs).
+ */
+export function parseNetworkMounts(output) {
+  if (!output) return []
+  const mounts = []
+  for (const line of output.split('\n').filter(Boolean)) {
+    // Linux:  //server/share on /mnt/share type cifs (rw,...)
+    // macOS:  //user@server/share on /Volumes/share (smbfs, ...)
+    let match
+    if ((match = line.match(/^(.+?)\s+on\s+(.+?)\s+type\s+(\S+)/))) {
+      // Linux format
+      const [, remote, mount, type] = match
+      if (NETWORK_FS_TYPES.has(type)) {
+        mounts.push({ mount, type, remote, isNetwork: true })
+      }
+    } else if ((match = line.match(/^(.+?)\s+on\s+(.+?)\s+\((\w+)/))) {
+      // macOS format
+      const [, remote, mount, type] = match
+      if (NETWORK_FS_TYPES.has(type)) {
+        mounts.push({ mount, type, remote, isNetwork: true })
+      }
+    }
+  }
+  return mounts
+}
+
 export async function collectDisk() {
-  const [fsData, blockDevices] = await Promise.all([
-    si.fsSize(),
-    si.blockDevices()
-  ])
-  const filesystems = (fsData || []).map(fs => ({
-    mount: fs.mount,
-    type: fs.type,
-    size: fs.size,
-    used: fs.used,
-    available: fs.available,
-    usePercent: fs.use,
-    fs: fs.fs
-  }))
+  // Use df -Pl for local filesystems only (avoids network mount hangs)
+  const dfOutput = _exec('df -Pl 2>/dev/null')
+  let filesystems = parseDfOutput(dfOutput)
+
+  // Enrich with filesystem types from mount command
+  const mountOutput = _exec('mount 2>/dev/null')
+  if (mountOutput) {
+    const typeMap = {}
+    for (const line of mountOutput.split('\n')) {
+      let m
+      if ((m = line.match(/^(.+?)\s+on\s+(.+?)\s+type\s+(\S+)/))) {
+        typeMap[m[2]] = m[3]
+      } else if ((m = line.match(/^(.+?)\s+on\s+(.+?)\s+\((\w+)/))) {
+        typeMap[m[2]] = m[3]
+      }
+    }
+    filesystems = filesystems.map(fs => ({ ...fs, type: typeMap[fs.mount] || fs.type }))
+  }
+
+  // Detect network mounts (display-only, no size collection)
+  const networkMounts = parseNetworkMounts(mountOutput)
+
+  // Block devices from systeminformation
+  const blockDevices = await si.blockDevices()
   const devices = (blockDevices || []).map(d => ({
     name: d.name,
     type: d.type,
@@ -234,7 +308,8 @@ export async function collectDisk() {
     serial: d.serial,
     device: `/dev/${d.name}`
   }))
-  return { filesystems, devices, timestamp: Date.now() }
+
+  return { filesystems, networkMounts, devices, timestamp: Date.now() }
 }
 
 export async function collectSmart(device, lang = 'en') {

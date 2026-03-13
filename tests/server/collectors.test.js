@@ -40,6 +40,7 @@ import {
   collectCpu, collectMemory, collectGpu, collectNetwork, collectIp,
   collectDisk, collectFans, collectSmart, collectTemperature,
   collectGpuMacOS, collectTemperatureMacOS, collectTemperatureLinux,
+  parseDfOutput, parseNetworkMounts,
   COLLECTORS, setExecFn, resetExecFn, setPlatform, resetPlatform
 } from '../../server/collectors.js'
 
@@ -79,6 +80,17 @@ const mockExec = vi.fn((cmd) => {
     })
   }
   if (cmd.includes('which smartctl')) return '/opt/homebrew/bin/smartctl'
+  if (cmd.includes('df -Pl')) {
+    return `Filesystem     1024-blocks      Used Available Capacity Mounted on
+/dev/sda1       487652348 196850072 290802276      40% /
+tmpfs             4096000    12345   4083655       1% /tmp`
+  }
+  if (cmd.startsWith('mount')) {
+    return `/dev/sda1 on / type ext4 (rw,relatime)
+tmpfs on /tmp type tmpfs (rw,nosuid)
+//server/share on /mnt/nas type cifs (rw,credentials=/etc/cifs)
+nas:/volume1 on /mnt/nfs type nfs4 (rw,addr=192.168.1.100)`
+  }
   if (cmd.includes('sensors')) return 'fan1: 1500 RPM'
   if (cmd.includes('system_profiler SPDisplaysDataType')) {
     return `Apple M4:
@@ -248,12 +260,117 @@ describe('collectors', () => {
   })
 
   describe('collectDisk', () => {
-    it('returns filesystem and device info', async () => {
+    it('returns local filesystems and network mounts separately', async () => {
+      const data = await collectDisk()
+      // Local filesystems from df -Pl
+      expect(data.filesystems).toHaveLength(2)
+      expect(data.filesystems[0].mount).toBe('/')
+      expect(data.filesystems[0].type).toBe('ext4')
+      expect(data.filesystems[0].size).toBe(487652348 * 1024)
+      expect(data.filesystems[0].usePercent).toBe(40)
+      expect(data.filesystems[1].mount).toBe('/tmp')
+      // Network mounts detected from mount command
+      expect(data.networkMounts).toHaveLength(2)
+      expect(data.networkMounts[0]).toEqual({
+        mount: '/mnt/nas', type: 'cifs', remote: '//server/share', isNetwork: true
+      })
+      expect(data.networkMounts[1]).toEqual({
+        mount: '/mnt/nfs', type: 'nfs4', remote: 'nas:/volume1', isNetwork: true
+      })
+      // Block devices from si
+      expect(data.devices).toHaveLength(1)
+      expect(data.devices[0].name).toBe('sda')
+    })
+
+    it('handles empty df output', async () => {
+      setExecFn(() => '')
+      const data = await collectDisk()
+      expect(data.filesystems).toEqual([])
+      expect(data.networkMounts).toEqual([])
+    })
+
+    it('handles macOS mount format', async () => {
+      setPlatform(true)
+      setExecFn((cmd) => {
+        if (cmd.includes('df -Pl')) {
+          return `Filesystem   1024-blocks      Used Available Capacity  Mounted on
+/dev/disk3s1 1956255800  17408260 1776692080     1%    /`
+        }
+        if (cmd.startsWith('mount')) {
+          return `/dev/disk3s1 on / (apfs, sealed, local, read-only, journaled)
+//user@nas.local/Storage on /Volumes/Storage (smbfs, nodev, nosuid, mounted by robin)
+devfs on /dev (devfs, local, nobrowse)`
+        }
+        return ''
+      })
       const data = await collectDisk()
       expect(data.filesystems).toHaveLength(1)
       expect(data.filesystems[0].mount).toBe('/')
-      expect(data.devices).toHaveLength(1)
-      expect(data.devices[0].name).toBe('sda')
+      expect(data.filesystems[0].type).toBe('apfs')
+      expect(data.networkMounts).toHaveLength(1)
+      expect(data.networkMounts[0].mount).toBe('/Volumes/Storage')
+      expect(data.networkMounts[0].type).toBe('smbfs')
+      expect(data.networkMounts[0].remote).toBe('//user@nas.local/Storage')
+    })
+  })
+
+  describe('parseDfOutput', () => {
+    it('parses POSIX df output', () => {
+      const output = `Filesystem     1024-blocks      Used Available Capacity Mounted on
+/dev/sda1       487652348 196850072 290802276      40% /
+/dev/sda2       100000000  50000000  50000000      50% /home`
+      const result = parseDfOutput(output)
+      expect(result).toHaveLength(2)
+      expect(result[0].mount).toBe('/')
+      expect(result[0].fs).toBe('/dev/sda1')
+      expect(result[0].usePercent).toBe(40)
+      expect(result[1].mount).toBe('/home')
+    })
+
+    it('returns empty for null input', () => {
+      expect(parseDfOutput('')).toEqual([])
+      expect(parseDfOutput(null)).toEqual([])
+    })
+
+    it('handles mount points with spaces', () => {
+      const output = `Filesystem     1024-blocks Used Available Capacity Mounted on
+/dev/sda1       100000  50000  50000      50% /mnt/My Drive`
+      const result = parseDfOutput(output)
+      expect(result[0].mount).toBe('/mnt/My Drive')
+    })
+  })
+
+  describe('parseNetworkMounts', () => {
+    it('detects Linux cifs/nfs mounts', () => {
+      const output = `/dev/sda1 on / type ext4 (rw)
+//server/share on /mnt/nas type cifs (rw)
+nas:/vol on /mnt/nfs type nfs4 (rw)`
+      const result = parseNetworkMounts(output)
+      expect(result).toHaveLength(2)
+      expect(result[0].type).toBe('cifs')
+      expect(result[1].type).toBe('nfs4')
+    })
+
+    it('detects macOS smbfs/nfs mounts', () => {
+      const output = `/dev/disk1 on / (apfs, local)
+//user@server/share on /Volumes/Share (smbfs, nodev)
+nas:/data on /Volumes/NAS (nfs, nodev)`
+      const result = parseNetworkMounts(output)
+      expect(result).toHaveLength(2)
+      expect(result[0].type).toBe('smbfs')
+      expect(result[0].mount).toBe('/Volumes/Share')
+      expect(result[1].type).toBe('nfs')
+    })
+
+    it('ignores local filesystems', () => {
+      const output = `/dev/sda1 on / type ext4 (rw)
+tmpfs on /tmp type tmpfs (rw)`
+      expect(parseNetworkMounts(output)).toEqual([])
+    })
+
+    it('returns empty for null input', () => {
+      expect(parseNetworkMounts('')).toEqual([])
+      expect(parseNetworkMounts(null)).toEqual([])
     })
   })
 
