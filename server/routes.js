@@ -2,6 +2,10 @@ import { Router } from 'express'
 import { COLLECTORS } from './collectors.js'
 import { loadSettings, saveSettings } from './settings.js'
 
+function getLang(req) {
+  return req.query?.lang || loadSettings().locale || 'en'
+}
+
 /**
  * Create Express router with all API routes.
  * @param {object} state - Shared server state { cache, viewers, intervals, sseClients }
@@ -21,7 +25,9 @@ export function createRoutes(state) {
     }
     // Otherwise collect fresh
     try {
-      const data = await COLLECTORS[field]()
+      const data = field === 'smart'
+        ? await COLLECTORS[field](undefined, getLang(req))
+        : await COLLECTORS[field]()
       state.cache[field] = data
       return res.json(data)
     } catch (err) {
@@ -33,7 +39,7 @@ export function createRoutes(state) {
   router.get('/metrics/smart/:device', async (req, res) => {
     try {
       const device = `/dev/${req.params.device}`
-      const data = await COLLECTORS.smart(device)
+      const data = await COLLECTORS.smart(device, getLang(req))
       if (!data) return res.status(404).json({ error: 'Device not found or SMART not available' })
       return res.json(data)
     } catch (err) {
@@ -48,7 +54,9 @@ export function createRoutes(state) {
       return res.status(404).json({ error: `Unknown field: ${field}` })
     }
     try {
-      const data = await COLLECTORS[field]()
+      const data = field === 'smart'
+        ? await COLLECTORS[field](undefined, getLang(req))
+        : await COLLECTORS[field]()
       state.cache[field] = data
       // Broadcast to SSE clients
       broadcastSSE(state, field, data)

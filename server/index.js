@@ -34,7 +34,9 @@ export function createApp() {
       state.intervals[field] = setInterval(async () => {
         if (state.sseClients.size === 0) return
         try {
-          const data = await collector()
+          const data = field === 'smart'
+            ? await collector(undefined, loadSettings().locale || 'en')
+            : await collector()
           state.cache[field] = data
           broadcastSSE(state, field, data)
         } catch { /* silently skip failed collections */ }
