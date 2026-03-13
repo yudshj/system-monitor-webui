@@ -36,12 +36,20 @@ vi.mock('systeminformation', () => ({
   }
 }))
 
-import { collectCpu, collectMemory, collectGpu, collectNetwork, collectIp, collectDisk, collectFans, collectSmart, collectTemperature, COLLECTORS, setExecFn, resetExecFn } from '../../server/collectors.js'
+import {
+  collectCpu, collectMemory, collectGpu, collectNetwork, collectIp,
+  collectDisk, collectFans, collectSmart, collectTemperature,
+  collectGpuMacOS, collectTemperatureMacOS, collectTemperatureLinux,
+  COLLECTORS, setExecFn, resetExecFn, setPlatform, resetPlatform
+} from '../../server/collectors.js'
 
-// Mock exec function
+// Mock exec function for Linux (default)
 const mockExec = vi.fn((cmd) => {
-  if (cmd.includes('nvidia-smi --query-gpu=')) {
+  if (cmd.includes('nvidia-smi --query-gpu=name,driver_version')) {
     return 'RTX 3070, 535.129, 45, 30, 8192, 3000, 5192, 65, 120.5, 220.0'
+  }
+  if (cmd.includes('nvidia-smi --query-gpu=name,temperature')) {
+    return 'RTX 3070, 65'
   }
   if (cmd === 'nvidia-smi') {
     return 'NVIDIA-SMI output\nCUDA Version: 12.1\nMore output'
@@ -54,10 +62,10 @@ const mockExec = vi.fn((cmd) => {
   if (cmd.includes('tailscale status')) {
     return JSON.stringify({ Self: { TailscaleIPs: ['100.64.0.7'], DNSName: 'arch.example.ts.net.' } })
   }
-  if (cmd.includes('sudo smartctl --scan')) {
+  if (cmd.includes('sudo smartctl --scan') || cmd.includes('sudo /opt/homebrew/bin/smartctl --scan')) {
     return JSON.stringify({ devices: [{ name: '/dev/sda' }] })
   }
-  if (cmd.includes('sudo smartctl -a')) {
+  if (cmd.includes('sudo smartctl -a') || cmd.includes('sudo /opt/homebrew/bin/smartctl -a')) {
     return JSON.stringify({
       device: { name: '/dev/sda' },
       model_name: 'Test SSD',
@@ -70,18 +78,48 @@ const mockExec = vi.fn((cmd) => {
       ]}
     })
   }
+  if (cmd.includes('which smartctl')) return '/opt/homebrew/bin/smartctl'
   if (cmd.includes('sensors')) return 'fan1: 1500 RPM'
+  if (cmd.includes('system_profiler SPDisplaysDataType')) {
+    return `Apple M4:
+
+      Chipset Model: Apple M4
+      Type: GPU
+      Bus: Built-In
+      Total Number of Cores: 10
+      Metal Support: Metal 3`
+  }
+  if (cmd.includes('powermetrics --samplers gpu_power,cpu_power')) {
+    return `CPU Power: 47 mW
+GPU Power: 57 mW
+ANE Power: 0 mW
+Combined Power (CPU + GPU + ANE): 105 mW
+GPU HW active residency:   4.82% (338 MHz: .42% 618 MHz: 0% 796 MHz: 4.4%)
+GPU idle residency:  95.18%
+GPU Power: 67 mW`
+  }
+  if (cmd.includes('powermetrics --samplers thermal')) {
+    return `**** Thermal pressure ****
+Current pressure level: Nominal`
+  }
+  if (cmd.includes('smctemp')) {
+    return `CPU Die: 45.2
+GPU: 38.1
+SoC: 42.5`
+  }
   return ''
 })
 
 describe('collectors', () => {
   beforeEach(() => {
     setExecFn(mockExec)
+    setPlatform(false) // Default to Linux
     mockExec.mockClear()
   })
 
   afterEach(() => {
     resetExecFn()
+    resetPlatform()
   })
 
   describe('collectCpu', () => {
@@ -108,7 +146,7 @@ describe('collectors', () => {
   })
 
   describe('collectGpu', () => {
-    it('returns parsed GPU data', async () => {
+    it('returns parsed NVIDIA GPU data on Linux', async () => {
       const data = await collectGpu()
       expect(data.available).toBe(true)
       expect(data.gpus).toHaveLength(1)
@@ -124,6 +162,49 @@ describe('collectors', () => {
       setExecFn(() => '')
       const data = await collectGpu()
       expect(data.available).toBe(false)
+    })
+
+    it('returns Apple GPU data on macOS', async () => {
+      setPlatform(true)
+      const data = await collectGpu()
+      expect(data.available).toBe(true)
+      expect(data.platform).toBe('macos')
+      expect(data.gpus).toHaveLength(1)
+      expect(data.gpus[0].name).toBe('Apple M4')
+      expect(data.gpus[0].cores).toBe(10)
+      expect(data.gpus[0].metalSupport).toBe('Metal 3')
+      expect(data.gpus[0].utilization).toBe(4.82)
+      expect(data.gpus[0].idleResidency).toBe(95.18)
+      expect(data.gpus[0].powerMw).toBe(67)
+      expect(data.gpus[0].cpuPowerMw).toBe(47)
+      expect(data.gpus[0].anePowerMw).toBe(0)
+      expect(data.gpus[0].combinedPowerMw).toBe(105)
+      expect(data.gpus[0].frequencyResidency).toHaveLength(3)
+      expect(data.gpus[0].frequencyResidency[0]).toEqual({ mhz: 338, percent: 0.42 })
+      expect(data.processes).toEqual([])
+    })
+
+    it('handles missing system_profiler on macOS', async () => {
+      setPlatform(true)
+      setExecFn(() => '')
+      const data = await collectGpu()
+      expect(data.available).toBe(false)
+      expect(data.platform).toBe('macos')
+    })
+
+    it('returns macOS GPU without powermetrics', async () => {
+      setPlatform(true)
+      setExecFn((cmd) => {
+        if (cmd.includes('system_profiler')) {
+          return 'Chipset Model: Apple M4\nTotal Number of Cores: 10\nMetal Support: Metal 3'
+        }
+        return ''
+      })
+      const data = await collectGpu()
+      expect(data.available).toBe(true)
+      expect(data.gpus[0].name).toBe('Apple M4')
+      expect(data.gpus[0].utilization).toBeUndefined()
+      expect(data.gpus[0].powerMw).toBeUndefined()
     })
   })
 
@@ -177,7 +258,7 @@ describe('collectors', () => {
   })
 
   describe('collectSmart', () => {
-    it('scans all devices', async () => {
+    it('scans all devices on Linux', async () => {
       const data = await collectSmart()
       expect(data.devices).toHaveLength(1)
       expect(data.devices[0].model).toBe('Test SSD')
@@ -206,10 +287,41 @@ describe('collectors', () => {
       const data = await collectSmart()
       expect(data.devices).toEqual([])
     })
+
+    it('uses homebrew smartctl path on macOS', async () => {
+      setPlatform(true)
+      const calls = []
+      setExecFn((cmd) => {
+        calls.push(cmd)
+        if (cmd.includes('which smartctl')) return '/opt/homebrew/bin/smartctl'
+        if (cmd.includes('--scan')) return JSON.stringify({ devices: [{ name: '/dev/disk0' }] })
+        if (cmd.includes('-a')) return JSON.stringify({
+          device: { name: '/dev/disk0' },
+          model_name: 'Apple SSD',
+          serial_number: 'ABC',
+          firmware_version: '1.0',
+          smart_status: { passed: true },
+          temperature: { current: 35 },
+          nvme_smart_health_information_log: {
+            temperature: 35,
+            power_on_hours: 100,
+            percentage_used: 1,
+            data_units_read: 500,
+            data_units_written: 300
+          }
+        })
+        return ''
+      })
+      const data = await collectSmart()
+      expect(data.devices).toHaveLength(1)
+      // Verify it used the homebrew path
+      const scanCall = calls.find(c => c.includes('--scan'))
+      expect(scanCall).toContain('/opt/homebrew/bin/smartctl')
+    })
   })
 
   describe('collectFans', () => {
-    it('returns fan data from systeminformation', async () => {
+    it('returns fan data from systeminformation on Linux', async () => {
       const data = await collectFans()
       expect(data.fans).toHaveLength(1)
       expect(data.fans[0].speed).toBe(1200)
@@ -221,10 +333,18 @@ describe('collectors', () => {
       const data = await collectFans()
       expect(data.fans.length).toBeGreaterThanOrEqual(0)
     })
+
+    it('returns empty fans on macOS with note', async () => {
+      setPlatform(true)
+      const data = await collectFans()
+      expect(data.fans).toEqual([])
+      expect(data.platform).toBe('macos')
+      expect(data.note).toContain('Swift CLI helper')
+    })
   })
 
   describe('collectTemperature', () => {
-    it('returns CPU and GPU temps', async () => {
+    it('returns CPU and GPU temps on Linux', async () => {
       const data = await collectTemperature()
       expect(data.sensors.length).toBeGreaterThan(0)
       const cpuSensors = data.sensors.filter(s => s.type === 'cpu')
@@ -236,11 +356,49 @@ describe('collectors', () => {
       expect(data.timestamp).toBeTypeOf('number')
     })
 
-    it('handles no GPU', async () => {
+    it('handles no GPU on Linux', async () => {
       setExecFn(() => '')
       const data = await collectTemperature()
       const gpuSensors = data.sensors.filter(s => s.type === 'gpu')
       expect(gpuSensors).toHaveLength(0)
+    })
+
+    it('returns thermal pressure + smctemp data on macOS', async () => {
+      setPlatform(true)
+      const data = await collectTemperature()
+      expect(data.platform).toBe('macos')
+      expect(data.thermalPressure).toBe('Nominal')
+      expect(data.sensors).toHaveLength(3)
+      expect(data.sensors[0]).toEqual({ name: 'CPU Die', value: 45.2, type: 'cpu' })
+      expect(data.sensors[1]).toEqual({ name: 'GPU', value: 38.1, type: 'gpu' })
+      expect(data.sensors[2]).toEqual({ name: 'SoC', value: 42.5, type: 'cpu' })
+      expect(data.max).toBe(45.2)
+    })
+
+    it('handles macOS without smctemp', async () => {
+      setPlatform(true)
+      setExecFn((cmd) => {
+        if (cmd.includes('smctemp')) return ''
+        if (cmd.includes('powermetrics --samplers thermal')) {
+          return 'Current pressure level: Fair'
+        }
+        return ''
+      })
+      const data = await collectTemperature()
+      expect(data.sensors).toEqual([])
+      expect(data.thermalPressure).toBe('Fair')
+      expect(data.max).toBeNull()
+    })
+
+    it('handles macOS without powermetrics sudo', async () => {
+      setPlatform(true)
+      setExecFn((cmd) => {
+        if (cmd.includes('smctemp')) return 'CPU Die: 50.0'
+        return '' // powermetrics fails
+      })
+      const data = await collectTemperature()
+      expect(data.sensors).toHaveLength(1)
+      expect(data.thermalPressure).toBeUndefined()
     })
   })
 
