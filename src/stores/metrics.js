@@ -15,17 +15,19 @@ export const useMetricsStore = defineStore('metrics', () => {
   const disk = ref(null)
   const smart = ref(null)
   const fans = ref(null)
+  const temperature = ref(null)
   const viewers = ref(0)
 
   // Chart history
   const cpuHistory = ref([])
   const memHistory = ref([])
   const gpuHistory = ref([])
+  const tempHistory = ref([])
 
   // Loading state per field
   const loading = ref({})
 
-  const fields = { cpu, memory, gpu, network, ip, disk, smart, fans }
+  const fields = { cpu, memory, gpu, network, ip, disk, smart, fans, temperature }
 
   function updateField(field, data) {
     if (fields[field]) {
@@ -40,6 +42,9 @@ export const useMetricsStore = defineStore('metrics', () => {
     }
     if (field === 'gpu' && data?.gpus?.[0]) {
       gpuHistory.value = [...gpuHistory.value.slice(-(HISTORY_MAX - 1)), { t: data.timestamp, v: data.gpus[0].utilization }]
+    }
+    if (field === 'temperature' && data?.max != null) {
+      tempHistory.value = [...tempHistory.value.slice(-(HISTORY_MAX - 1)), { t: data.timestamp, v: data.max }]
     }
     if (field === 'viewers') {
       viewers.value = data?.count || 0
@@ -73,8 +78,8 @@ export const useMetricsStore = defineStore('metrics', () => {
   }
 
   return {
-    cpu, memory, gpu, network, ip, disk, smart, fans, viewers,
-    cpuHistory, memHistory, gpuHistory,
+    cpu, memory, gpu, network, ip, disk, smart, fans, temperature, viewers,
+    cpuHistory, memHistory, gpuHistory, tempHistory,
     loading, updateField, fetchField, refreshField
   }
 })

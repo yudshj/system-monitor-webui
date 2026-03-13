@@ -30,6 +30,8 @@ describe('metrics store', () => {
     expect(store.viewers).toBe(0)
     expect(store.cpuHistory).toEqual([])
     expect(store.memHistory).toEqual([])
+    expect(store.tempHistory).toEqual([])
+    expect(store.temperature).toBeNull()
   })
 
   it('updateField sets cpu data and appends to history', () => {
@@ -58,6 +60,14 @@ describe('metrics store', () => {
     const store = useMetricsStore()
     store.updateField('viewers', { count: 5 })
     expect(store.viewers).toBe(5)
+  })
+
+  it('updateField sets temperature data and appends to history', () => {
+    const store = useMetricsStore()
+    store.updateField('temperature', { max: 55, sensors: [], timestamp: 4000 })
+    expect(store.temperature.max).toBe(55)
+    expect(store.tempHistory).toHaveLength(1)
+    expect(store.tempHistory[0]).toEqual({ t: 4000, v: 55 })
   })
 
   it('updateField handles unknown fields gracefully', () => {

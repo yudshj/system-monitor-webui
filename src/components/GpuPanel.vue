@@ -1,20 +1,22 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
+import { useI18n } from '../i18n/index.js'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip } from 'chart.js'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip)
 
 const metrics = useMetricsStore()
+const { t } = useI18n()
 const showRaw = ref(false)
 const copySuccess = ref(false)
 
 onMounted(() => { if (!metrics.gpu) metrics.fetchField('gpu') })
 
-function tempColor(t) {
-  if (t < 60) return '#34d399'
-  if (t < 80) return '#fbbf24'
+function tempColor(v) {
+  if (v < 60) return '#34d399'
+  if (v < 80) return '#fbbf24'
   return '#f87171'
 }
 
@@ -27,12 +29,8 @@ async function copyRaw() {
 }
 
 const chartOpts = {
-  responsive: true, maintainAspectRatio: false,
-  animation: { duration: 300 },
-  scales: {
-    x: { display: false },
-    y: { min: 0, max: 100, ticks: { color: '#94a3b8', callback: v => v + '%' }, grid: { color: 'rgba(148,163,184,0.1)' } }
-  },
+  responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+  scales: { x: { display: false }, y: { min: 0, max: 100, ticks: { color: '#94a3b8', callback: v => v + '%' }, grid: { color: 'rgba(148,163,184,0.1)' } } },
   plugins: { tooltip: { enabled: true }, legend: { display: false } },
   elements: { point: { radius: 0 }, line: { tension: 0.4 } }
 }
@@ -41,8 +39,7 @@ const gpuChartData = computed(() => ({
   labels: metrics.gpuHistory.map((_, i) => i),
   datasets: [{
     data: metrics.gpuHistory.map(h => h.v),
-    borderColor: '#a78bfa',
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    borderColor: '#a78bfa', backgroundColor: 'rgba(167,139,250,0.15)',
     fill: true, borderWidth: 2
   }]
 }))
@@ -52,80 +49,67 @@ const gpuChartData = computed(() => ({
   <div class="panel-grid single">
     <div class="card wide">
       <div class="card-header">
-        <h2>🎮 GPU</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.gpu }" @click="metrics.refreshField('gpu')" title="Refresh">↻</button>
+        <h2>🎮 {{ t('gpu.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.gpu }" @click="metrics.refreshField('gpu')" :title="t('common.refresh')">↻</button>
       </div>
-
-      <div v-if="metrics.gpu?.available === false" class="card-placeholder">
-        GPU not available (nvidia-smi not found)
-      </div>
-
+      <div v-if="metrics.gpu?.available === false" class="card-placeholder">{{ t('gpu.notAvailable') }}</div>
       <div v-else-if="metrics.gpu?.gpus?.length">
         <div v-for="(g, i) in metrics.gpu.gpus" :key="i" class="gpu-card">
           <div class="gpu-info-row">
-            <div class="info-chip"><span class="info-label">Name</span><span class="mono">{{ g.name }}</span></div>
-            <div class="info-chip"><span class="info-label">Driver</span><span class="mono">{{ g.driverVersion }}</span></div>
-            <div class="info-chip" v-if="metrics.gpu.cudaVersion"><span class="info-label">CUDA</span><span class="mono">{{ metrics.gpu.cudaVersion }}</span></div>
+            <div class="info-chip"><span class="info-label">{{ t('gpu.name') }}</span><span class="mono">{{ g.name }}</span></div>
+            <div class="info-chip"><span class="info-label">{{ t('gpu.driver') }}</span><span class="mono">{{ g.driverVersion }}</span></div>
+            <div class="info-chip" v-if="metrics.gpu.cudaVersion"><span class="info-label">{{ t('gpu.cuda') }}</span><span class="mono">{{ metrics.gpu.cudaVersion }}</span></div>
           </div>
-
           <div class="gpu-metrics">
             <div class="metric-block">
-              <span class="metric-label">Utilization</span>
+              <span class="metric-label">{{ t('gpu.utilization') }}</span>
               <span class="stat-value mono">{{ g.utilization }}%</span>
               <div class="progress-bar"><div class="progress-fill" :style="{ width: g.utilization + '%', background: '#a78bfa' }"></div></div>
             </div>
             <div class="metric-block">
-              <span class="metric-label">VRAM</span>
+              <span class="metric-label">{{ t('gpu.vram') }}</span>
               <span class="stat-value mono">{{ g.memoryUsed }} / {{ g.memoryTotal }} MB</span>
               <div class="progress-bar"><div class="progress-fill" :style="{ width: (g.memoryUsed/g.memoryTotal*100) + '%', background: '#60a5fa' }"></div></div>
             </div>
             <div class="metric-block">
-              <span class="metric-label">Temperature</span>
+              <span class="metric-label">{{ t('gpu.temp') }}</span>
               <span class="stat-value mono" :style="{ color: tempColor(g.temperature) }">{{ g.temperature }}°C</span>
             </div>
             <div class="metric-block">
-              <span class="metric-label">Power</span>
+              <span class="metric-label">{{ t('gpu.power') }}</span>
               <span class="stat-value mono">{{ g.powerDraw }}W / {{ g.powerLimit }}W</span>
               <div class="progress-bar"><div class="progress-fill" :style="{ width: (g.powerDraw/g.powerLimit*100) + '%', background: '#fbbf24' }"></div></div>
             </div>
           </div>
         </div>
-
-        <!-- GPU Usage Chart -->
         <div class="chart-container" v-if="gpuChartData.datasets[0].data.length > 1">
-          <h3>Utilization History</h3>
+          <h3>{{ t('gpu.utilizationHistory') }}</h3>
           <Line :data="gpuChartData" :options="chartOpts" />
         </div>
-
-        <!-- Processes -->
         <div class="section" v-if="metrics.gpu.processes?.length">
-          <h3>GPU Processes</h3>
+          <h3>{{ t('gpu.processes') }}</h3>
           <div class="table-wrap">
             <table>
-              <thead><tr><th>PID</th><th>Process</th><th>Memory (MB)</th></tr></thead>
+              <thead><tr><th>{{ t('gpu.pid') }}</th><th>{{ t('gpu.process') }}</th><th>{{ t('gpu.memoryMB') }}</th></tr></thead>
               <tbody>
                 <tr v-for="p in metrics.gpu.processes" :key="p.pid">
-                  <td class="mono">{{ p.pid }}</td>
-                  <td class="mono">{{ p.name }}</td>
-                  <td class="mono">{{ p.memoryMB }}</td>
+                  <td class="mono">{{ p.pid }}</td><td class="mono">{{ p.name }}</td><td class="mono">{{ p.memoryMB }}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-
-        <!-- Raw nvidia-smi -->
         <div class="section">
           <button class="toggle-btn" @click="showRaw = !showRaw">
-            {{ showRaw ? '▼ Hide' : '▶ Show' }} Raw nvidia-smi
+            {{ showRaw ? '▼ ' + t('gpu.hideRaw') : '▶ ' + t('gpu.showRaw') }}
           </button>
           <div v-if="showRaw" class="raw-output">
-            <button class="copy-btn" @click="copyRaw">{{ copySuccess ? '✅ Copied' : '📋 Copy' }}</button>
+            <button class="copy-btn" @click="copyRaw">{{ copySuccess ? '✅ ' + t('common.copied') : '📋 ' + t('common.copy') }}</button>
             <pre class="mono">{{ metrics.gpu.raw }}</pre>
           </div>
         </div>
       </div>
-      <div v-else class="card-placeholder">Loading GPU data…</div>
+      <div v-else class="card-placeholder">{{ t('gpu.loading') }}</div>
     </div>
   </div>
 </template>

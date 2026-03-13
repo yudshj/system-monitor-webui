@@ -23,7 +23,7 @@ export function useSSE() {
     }
 
     // Listen for each metric event type
-    const fields = ['cpu', 'memory', 'gpu', 'network', 'ip', 'disk', 'smart', 'fans', 'viewers']
+    const fields = ['cpu', 'memory', 'gpu', 'network', 'ip', 'disk', 'smart', 'fans', 'temperature', 'viewers']
     for (const field of fields) {
       eventSource.addEventListener(field, (e) => {
         try {

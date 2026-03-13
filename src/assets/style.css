@@ -652,6 +652,30 @@ tr:hover td { background: rgba(255,255,255,0.02); }
 .save-toast.success { color: var(--success); }
 .save-toast.error { color: var(--danger); }
 
+/* === Temperature Groups === */
+.temp-groups { display: flex; flex-direction: column; gap: 16px; margin-top: 12px; }
+.temp-group h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+
+/* === Language Switcher === */
+.lang-switcher { display: flex; gap: 6px; }
+.lang-btn {
+  padding: 6px 18px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+.lang-btn.active {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-dim);
+}
+.lang-btn:hover { border-color: var(--primary); }
+
 /* === Transitions === */
 .fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }

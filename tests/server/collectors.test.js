@@ -36,7 +36,7 @@ vi.mock('systeminformation', () => ({
   }
 }))
 
-import { collectCpu, collectMemory, collectGpu, collectNetwork, collectIp, collectDisk, collectFans, collectSmart, COLLECTORS, setExecFn, resetExecFn } from '../../server/collectors.js'
+import { collectCpu, collectMemory, collectGpu, collectNetwork, collectIp, collectDisk, collectFans, collectSmart, collectTemperature, COLLECTORS, setExecFn, resetExecFn } from '../../server/collectors.js'
 
 // Mock exec function
 const mockExec = vi.fn((cmd) => {
@@ -223,6 +223,27 @@ describe('collectors', () => {
     })
   })
 
+  describe('collectTemperature', () => {
+    it('returns CPU and GPU temps', async () => {
+      const data = await collectTemperature()
+      expect(data.sensors.length).toBeGreaterThan(0)
+      const cpuSensors = data.sensors.filter(s => s.type === 'cpu')
+      const gpuSensors = data.sensors.filter(s => s.type === 'gpu')
+      expect(cpuSensors.length).toBeGreaterThan(0)
+      expect(gpuSensors.length).toBeGreaterThan(0)
+      expect(cpuSensors[0].name).toBe('CPU Package')
+      expect(data.max).toBeTypeOf('number')
+      expect(data.timestamp).toBeTypeOf('number')
+    })
+
+    it('handles no GPU', async () => {
+      setExecFn(() => '')
+      const data = await collectTemperature()
+      const gpuSensors = data.sensors.filter(s => s.type === 'gpu')
+      expect(gpuSensors).toHaveLength(0)
+    })
+  })
+
   describe('COLLECTORS map', () => {
     it('has all expected fields', () => {
       const keys = Object.keys(COLLECTORS)
@@ -234,6 +255,7 @@ describe('collectors', () => {
       expect(keys).toContain('disk')
       expect(keys).toContain('smart')
       expect(keys).toContain('fans')
+      expect(keys).toContain('temperature')
     })
 
     it('all values are functions', () => {

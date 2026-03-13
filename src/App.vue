@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useSSE } from './composables/useSSE.js'
 import { useSettingsStore } from './stores/settings.js'
+import { useI18n } from './i18n/index.js'
 import AppHeader from './components/AppHeader.vue'
 import CpuMemoryPanel from './components/CpuMemoryPanel.vue'
 import GpuPanel from './components/GpuPanel.vue'
@@ -12,15 +13,18 @@ import SettingsPanel from './components/SettingsPanel.vue'
 const activeTab = ref('cpu')
 const { connected } = useSSE()
 const settingsStore = useSettingsStore()
+const { t } = useI18n()
 
-onMounted(() => settingsStore.load())
+onMounted(async () => {
+  await settingsStore.load()
+})
 
 const tabs = [
-  { id: 'cpu', label: 'CPU / Memory', icon: '🖥️' },
-  { id: 'gpu', label: 'GPU', icon: '🎮' },
-  { id: 'network', label: 'Network', icon: '🌐' },
-  { id: 'disk', label: 'Disk', icon: '💾' },
-  { id: 'settings', label: 'Settings', icon: '⚙️' }
+  { id: 'cpu', icon: '🖥️', labelKey: 'tabs.cpu' },
+  { id: 'gpu', icon: '🎮', labelKey: 'tabs.gpu' },
+  { id: 'network', icon: '🌐', labelKey: 'tabs.network' },
+  { id: 'disk', icon: '💾', labelKey: 'tabs.disk' },
+  { id: 'settings', icon: '⚙️', labelKey: 'tabs.settings' }
 ]
 </script>
 
@@ -41,6 +45,5 @@ const tabs = [
         <SettingsPanel v-else-if="activeTab === 'settings'" />
       </Transition>
     </main>
-    <div id="toast-container"></div>
   </div>
 </template>

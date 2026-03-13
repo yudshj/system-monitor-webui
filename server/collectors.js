@@ -197,6 +197,47 @@ export async function collectFans() {
   return { fans: parsedFans, timestamp: Date.now() }
 }
 
+export async function collectTemperature() {
+  const [cpuTemp, gpuRaw] = await Promise.all([
+    si.cpuTemperature(),
+    (async () => _exec(
+      'nvidia-smi --query-gpu=name,temperature.gpu --format=csv,noheader,nounits'
+    ))()
+  ])
+
+  const sensors = []
+
+  // CPU temps
+  if (cpuTemp.main != null) {
+    sensors.push({ name: 'CPU Package', value: cpuTemp.main, type: 'cpu' })
+  }
+  for (let i = 0; i < (cpuTemp.cores || []).length; i++) {
+    if (cpuTemp.cores[i] != null) {
+      sensors.push({ name: `CPU Core ${i}`, value: cpuTemp.cores[i], type: 'cpu' })
+    }
+  }
+
+  // GPU temps
+  if (gpuRaw) {
+    gpuRaw.split('\n').filter(Boolean).forEach((line, i) => {
+      const parts = line.split(', ').map(s => s.trim())
+      const temp = parseFloat(parts[1])
+      if (!isNaN(temp)) {
+        sensors.push({ name: parts[0] || `GPU ${i}`, value: temp, type: 'gpu' })
+      }
+    })
+  }
+
+  // Disk temps (from SMART cache or quick check)
+  // We won't re-run smartctl here to avoid slowness; disk temps come from SMART collector
+
+  return {
+    sensors,
+    max: sensors.length ? Math.max(...sensors.map(s => s.value)) : null,
+    timestamp: Date.now()
+  }
+}
+
 // Map of field names to collector functions
 export const COLLECTORS = {
   cpu: collectCpu,
@@ -206,5 +247,6 @@ export const COLLECTORS = {
   ip: collectIp,
   disk: collectDisk,
   smart: collectSmart,
-  fans: collectFans
+  fans: collectFans,
+  temperature: collectTemperature
 }

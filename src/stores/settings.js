@@ -6,8 +6,9 @@ const API = '/status/api'
 
 export const useSettingsStore = defineStore('settings', () => {
   const intervals = ref({
-    cpu: 2, memory: 5, gpu: 5, network: 60, disk: 30, smart: 300, fans: 10
+    cpu: 2, memory: 5, gpu: 5, network: 60, disk: 30, smart: 300, fans: 10, temperature: 10
   })
+  const locale = ref('zh')
   const targets = ref([{ name: 'Local', url: '' }])
   const activeTarget = ref(0)
   const saving = ref(false)
@@ -22,6 +23,11 @@ export const useSettingsStore = defineStore('settings', () => {
         intervals.value = data.intervals || intervals.value
         targets.value = data.targets || targets.value
         activeTarget.value = data.activeTarget ?? 0
+        if (data.locale) {
+          locale.value = data.locale
+          // Sync with i18n
+          import('../i18n/index.js').then(m => m.setLocale(data.locale))
+        }
       }
     } catch { /* ignore */ }
   }
@@ -32,7 +38,7 @@ export const useSettingsStore = defineStore('settings', () => {
       const res = await apiFetch(`${API}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ intervals: intervals.value, targets: targets.value, activeTarget: activeTarget.value })
+        body: JSON.stringify({ intervals: intervals.value, targets: targets.value, activeTarget: activeTarget.value, locale: locale.value })
       })
       return res.ok
     } catch { return false }
@@ -63,5 +69,5 @@ export const useSettingsStore = defineStore('settings', () => {
     finally { testing.value = false }
   }
 
-  return { intervals, targets, activeTarget, saving, testing, testResult, load, save, addTarget, removeTarget, testConnection }
+  return { intervals, locale, targets, activeTarget, saving, testing, testResult, load, save, addTarget, removeTarget, testConnection }
 })

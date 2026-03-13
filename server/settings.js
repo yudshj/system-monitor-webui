@@ -13,10 +13,12 @@ const DEFAULTS = {
     network: 60,
     disk: 30,
     smart: 300,
-    fans: 10
+    fans: 10,
+    temperature: 10
   },
   targets: [{ name: 'Local', url: '' }],
-  activeTarget: 0
+  activeTarget: 0,
+  locale: 'zh'
 }
 
 export function getDefaults() {

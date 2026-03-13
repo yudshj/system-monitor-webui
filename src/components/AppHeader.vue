@@ -1,6 +1,6 @@
 <script setup>
 import { useMetricsStore } from '../stores/metrics.js'
-import { computed } from 'vue'
+import { useI18n } from '../i18n/index.js'
 
 const props = defineProps({
   tabs: Array,
@@ -9,6 +9,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:activeTab'])
 const metrics = useMetricsStore()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -19,14 +20,14 @@ const metrics = useMetricsStore()
           <path d="M3 17l4-8 4 6 4-12 4 8" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
           <circle cx="19" cy="11" r="2" fill="#34d399"/>
         </svg>
-        <h1 class="brand-title">System Monitor</h1>
+        <h1 class="brand-title">{{ t('app.title') }}</h1>
       </div>
       <div class="header-status">
         <span class="viewer-badge" v-if="metrics.viewers > 0">
-          👁️ {{ metrics.viewers }}
+          👁️ {{ metrics.viewers }} {{ t('app.viewers') }}
         </span>
         <span class="connection-dot" :class="connected ? 'connected' : 'disconnected'"
-              :title="connected ? 'Connected' : 'Disconnected'"></span>
+              :title="connected ? t('app.connected') : t('app.disconnected')"></span>
       </div>
     </div>
     <nav class="tab-nav">
@@ -38,7 +39,7 @@ const metrics = useMetricsStore()
         @click="emit('update:activeTab', tab.id)"
       >
         <span class="tab-icon">{{ tab.icon }}</span>
-        <span class="tab-label">{{ tab.label }}</span>
+        <span class="tab-label">{{ t(tab.labelKey) }}</span>
       </button>
     </nav>
   </header>

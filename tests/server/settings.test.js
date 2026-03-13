@@ -20,6 +20,8 @@ describe('settings', () => {
     expect(d.intervals.disk).toBe(30)
     expect(d.intervals.smart).toBe(300)
     expect(d.intervals.fans).toBe(10)
+    expect(d.intervals.temperature).toBe(10)
+    expect(d.locale).toBe('zh')
     expect(d.targets).toHaveLength(1)
     expect(d.targets[0].name).toBe('Local')
     expect(d.activeTarget).toBe(0)
