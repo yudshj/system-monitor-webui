@@ -9,7 +9,7 @@ const DEFAULTS = {
   intervals: {
     cpu: 2,
     memory: 5,
-    gpu: 5,
+    gpu: 15,
     network: 60,
     disk: 30,
     smart: 300,

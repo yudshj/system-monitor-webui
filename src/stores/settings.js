@@ -6,7 +6,7 @@ const API = '/status/api'
 
 export const useSettingsStore = defineStore('settings', () => {
   const intervals = ref({
-    cpu: 2, memory: 5, gpu: 5, network: 60, disk: 30, smart: 300, fans: 10, temperature: 10
+    cpu: 2, memory: 5, gpu: 15, network: 60, disk: 30, smart: 300, fans: 10, temperature: 10
   })
   const locale = ref('zh')
   const targets = ref([{ name: 'Local', url: '' }])

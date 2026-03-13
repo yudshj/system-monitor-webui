@@ -15,7 +15,7 @@ describe('settings', () => {
     const d = getDefaults()
     expect(d.intervals.cpu).toBe(2)
     expect(d.intervals.memory).toBe(5)
-    expect(d.intervals.gpu).toBe(5)
+    expect(d.intervals.gpu).toBe(15)
     expect(d.intervals.network).toBe(60)
     expect(d.intervals.disk).toBe(30)
     expect(d.intervals.smart).toBe(300)
