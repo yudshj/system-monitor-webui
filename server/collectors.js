@@ -151,13 +151,13 @@ export async function collectDisk() {
 
 export async function collectSmart(device) {
   if (device) {
-    const output = _exec(`smartctl -a ${device} --json`, 15000)
+    const output = _exec(`sudo smartctl -a ${device} --json`, 15000)
     if (!output) return null
     return parseSmartData(output)
   }
 
   // Scan all devices
-  const scanOutput = _exec('smartctl --scan --json', 15000)
+  const scanOutput = _exec('sudo smartctl --scan --json', 15000)
   if (!scanOutput) return { devices: [], timestamp: Date.now() }
 
   let scan
@@ -166,7 +166,7 @@ export async function collectSmart(device) {
   const devices = []
   for (const dev of (scan.devices || [])) {
     const devPath = dev.name
-    const output = _exec(`smartctl -a ${devPath} --json`, 15000)
+    const output = _exec(`sudo smartctl -a ${devPath} --json`, 15000)
     if (output) {
       const parsed = parseSmartData(output)
       if (parsed) devices.push(parsed)

@@ -29,7 +29,7 @@ export function createRoutes(state) {
     }
   })
 
-  // --- SMART for specific device ---
+  // --- SMART for specific device (must come before /metrics/:field) ---
   router.get('/metrics/smart/:device', async (req, res) => {
     try {
       const device = `/dev/${req.params.device}`

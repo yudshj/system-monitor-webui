@@ -54,10 +54,10 @@ const mockExec = vi.fn((cmd) => {
   if (cmd.includes('tailscale status')) {
     return JSON.stringify({ Self: { TailscaleIPs: ['100.64.0.7'], DNSName: 'arch.example.ts.net.' } })
   }
-  if (cmd.includes('smartctl --scan')) {
+  if (cmd.includes('sudo smartctl --scan')) {
     return JSON.stringify({ devices: [{ name: '/dev/sda' }] })
   }
-  if (cmd.includes('smartctl -a')) {
+  if (cmd.includes('sudo smartctl -a')) {
     return JSON.stringify({
       device: { name: '/dev/sda' },
       model_name: 'Test SSD',
