@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { authMiddleware, getAuthToken } from '../../server/auth.js'
 
 function mockReqRes(query = {}, headers = {}) {
-  const req = { query, headers }
+  const req = { query, headers, path: '/api/test' }
   const res = {
     statusCode: null,
     body: null,
@@ -44,6 +44,46 @@ describe('auth', () => {
       authMiddleware(req, res, next)
       expect(next).toHaveBeenCalled()
       expect(res.statusCode).toBeNull()
+    })
+  })
+
+  describe('authMiddleware — static assets bypass', () => {
+    beforeEach(() => { process.env.AUTH_TOKEN = 'secret42' })
+
+    it('allows .js files without token', () => {
+      const { req, res, next } = mockReqRes()
+      req.path = '/assets/index-abc123.js'
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('allows .css files without token', () => {
+      const { req, res, next } = mockReqRes()
+      req.path = '/assets/style-xyz.css'
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('allows .svg files without token', () => {
+      const { req, res, next } = mockReqRes()
+      req.path = '/favicon.svg'
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('allows .woff2 files without token', () => {
+      const { req, res, next } = mockReqRes()
+      req.path = '/fonts/inter.woff2'
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('still blocks non-static paths', () => {
+      const { req, res, next } = mockReqRes()
+      req.path = '/api/metrics/cpu'
+      authMiddleware(req, res, next)
+      expect(next).not.toHaveBeenCalled()
+      expect(res.statusCode).toBe(403)
     })
   })
 
