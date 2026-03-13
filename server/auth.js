@@ -27,6 +27,12 @@ function ipv4ToInt(ip) {
   return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0
 }
 
+function isLoopback(ip) {
+  if (!ip) return false
+  const cleaned = ip.replace(/^::ffff:/i, '')
+  return cleaned === '127.0.0.1' || cleaned === '::1' || cleaned === 'localhost'
+}
+
 function isTailscaleIP(ip) {
   if (!ip) return false
   // Strip ::ffff: prefix (IPv4-mapped IPv6)
@@ -59,7 +65,7 @@ export function getAuthPolicy() {
 }
 
 // Exported for testing
-export { isTailscaleIP, isTailscaleHost }
+export { isLoopback, isTailscaleIP, isTailscaleHost }
 
 export function authMiddleware(req, res, next) {
   const expected = getAuthToken()
@@ -71,9 +77,12 @@ export function authMiddleware(req, res, next) {
   // Always allow static assets
   if (STATIC_EXT.test(req.path)) return next()
 
+  // Always allow localhost
+  const clientIP = req.ip || req.socket?.remoteAddress || ''
+  if (isLoopback(clientIP)) return next()
+
   // SKIP_TAILSCALE: allow requests from Tailscale network
   if (policy === 'SKIP_TAILSCALE') {
-    const clientIP = req.ip || req.socket?.remoteAddress || ''
     if (isTailscaleIP(clientIP)) return next()
     if (isTailscaleHost(req.headers?.host)) return next()
   }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { authMiddleware, getAuthToken, getAuthPolicy, isTailscaleIP, isTailscaleHost } from '../../server/auth.js'
+import { authMiddleware, getAuthToken, getAuthPolicy, isLoopback, isTailscaleIP, isTailscaleHost } from '../../server/auth.js'
 
 function mockReqRes(query = {}, headers = {}, extra = {}) {
   const req = { query, headers, path: '/api/test', ...extra }
@@ -60,6 +60,26 @@ describe('auth', () => {
     it('falls back to ALL for invalid values', () => {
       process.env.AUTH_POLICY = 'INVALID'
       expect(getAuthPolicy()).toBe('ALL')
+    })
+  })
+
+  describe('isLoopback', () => {
+    it('detects 127.0.0.1', () => {
+      expect(isLoopback('127.0.0.1')).toBe(true)
+    })
+    it('detects ::1', () => {
+      expect(isLoopback('::1')).toBe(true)
+    })
+    it('detects IPv4-mapped loopback', () => {
+      expect(isLoopback('::ffff:127.0.0.1')).toBe(true)
+    })
+    it('rejects non-loopback', () => {
+      expect(isLoopback('192.168.1.1')).toBe(false)
+      expect(isLoopback('100.64.0.7')).toBe(false)
+    })
+    it('handles null/empty', () => {
+      expect(isLoopback('')).toBe(false)
+      expect(isLoopback(null)).toBe(false)
     })
   })
 
@@ -206,6 +226,24 @@ describe('auth', () => {
       authMiddleware(req, res, next)
       expect(next).not.toHaveBeenCalled()
       expect(res.statusCode).toBe(403)
+    })
+
+    it('allows localhost without token in ALL mode', () => {
+      const { req, res, next } = mockReqRes({}, {}, { ip: '127.0.0.1' })
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('allows ::1 without token in ALL mode', () => {
+      const { req, res, next } = mockReqRes({}, {}, { ip: '::1' })
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
+    })
+
+    it('allows ::ffff:127.0.0.1 without token', () => {
+      const { req, res, next } = mockReqRes({}, {}, { ip: '::ffff:127.0.0.1' })
+      authMiddleware(req, res, next)
+      expect(next).toHaveBeenCalled()
     })
   })
 
