@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import { apiFetch } from '../utils/token.js'
 
 const API = '/status/api'
 const HISTORY_MAX = 60
@@ -48,7 +49,7 @@ export const useMetricsStore = defineStore('metrics', () => {
   async function fetchField(field) {
     loading.value = { ...loading.value, [field]: true }
     try {
-      const res = await fetch(`${API}/metrics/${field}`)
+      const res = await apiFetch(`${API}/metrics/${field}`)
       if (res.ok) {
         const data = await res.json()
         updateField(field, data)
@@ -61,7 +62,7 @@ export const useMetricsStore = defineStore('metrics', () => {
   async function refreshField(field) {
     loading.value = { ...loading.value, [field]: true }
     try {
-      const res = await fetch(`${API}/refresh/${field}`)
+      const res = await apiFetch(`${API}/refresh/${field}`)
       if (res.ok) {
         const data = await res.json()
         updateField(field, data)

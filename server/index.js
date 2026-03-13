@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url'
 import { createRoutes, broadcastSSE } from './routes.js'
 import { COLLECTORS } from './collectors.js'
 import { loadSettings } from './settings.js'
+import { authMiddleware } from './auth.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const PORT = process.env.PORT || 3001
@@ -53,6 +54,9 @@ export function createApp() {
   }
   state.onViewerJoin = () => startIntervals()
   state.onViewerLeave = () => stopIntervals()
+
+  // Auth middleware — protects everything under /status/
+  app.use('/status', authMiddleware)
 
   // API routes at /status/api
   app.use('/status/api', createRoutes(state))

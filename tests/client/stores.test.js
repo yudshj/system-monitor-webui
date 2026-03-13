@@ -5,6 +5,14 @@ import { setActivePinia, createPinia } from 'pinia'
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
+// Mock token util so apiFetch just calls fetch
+vi.mock('../../src/utils/token.js', () => ({
+  apiFetch: (...args) => mockFetch(...args),
+  apiUrl: (path) => path,
+  initToken: () => {},
+  getToken: () => ''
+}))
+
 import { useMetricsStore } from '../../src/stores/metrics.js'
 import { useSettingsStore } from '../../src/stores/settings.js'
 

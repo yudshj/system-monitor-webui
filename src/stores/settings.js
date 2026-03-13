@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { apiFetch } from '../utils/token.js'
 
 const API = '/status/api'
 
@@ -15,7 +16,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   async function load() {
     try {
-      const res = await fetch(`${API}/settings`)
+      const res = await apiFetch(`${API}/settings`)
       if (res.ok) {
         const data = await res.json()
         intervals.value = data.intervals || intervals.value
@@ -28,7 +29,7 @@ export const useSettingsStore = defineStore('settings', () => {
   async function save() {
     saving.value = true
     try {
-      const res = await fetch(`${API}/settings`, {
+      const res = await apiFetch(`${API}/settings`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ intervals: intervals.value, targets: targets.value, activeTarget: activeTarget.value })

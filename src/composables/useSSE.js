@@ -1,5 +1,6 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
+import { apiUrl } from '../utils/token.js'
 
 export function useSSE() {
   const connected = ref(false)
@@ -14,7 +15,7 @@ export function useSSE() {
     }
 
     const metrics = useMetricsStore()
-    eventSource = new EventSource('/status/api/stream')
+    eventSource = new EventSource(apiUrl('/status/api/stream'))
 
     eventSource.onopen = () => {
       connected.value = true
