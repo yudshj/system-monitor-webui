@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
+import { Globe, RotateCw, Copy, Check } from 'lucide-vue-next'
 
 const metrics = useMetricsStore()
 const { t } = useI18n()
@@ -23,9 +24,9 @@ async function copyText(text, field) {
   <div class="panel-grid single">
     <div class="card wide">
       <div class="card-header">
-        <h2>🌐 {{ t('network.title') }}</h2>
+        <h2><Globe :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('network.title') }}</h2>
         <button class="refresh-btn" :class="{ spinning: metrics.loading.network || metrics.loading.ip }"
-                @click="() => { metrics.refreshField('network'); metrics.refreshField('ip') }" :title="t('common.refresh')">↻</button>
+                @click="() => { metrics.refreshField('network'); metrics.refreshField('ip') }" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div class="section" v-if="metrics.ip">
         <h3>{{ t('network.ipAddresses') }}</h3>
@@ -34,28 +35,40 @@ async function copyText(text, field) {
             <span class="ip-label">{{ t('network.publicIpv4') }}</span>
             <div class="ip-value-row">
               <span class="mono">{{ metrics.ip.publicIPv4 }}</span>
-              <button class="copy-btn-sm" @click="copyText(metrics.ip.publicIPv4, 'ipv4')">{{ copiedField === 'ipv4' ? '✅' : '📋' }}</button>
+              <button class="copy-btn-sm" @click="copyText(metrics.ip.publicIPv4, 'ipv4')">
+                <Check v-if="copiedField === 'ipv4'" :size="14" />
+                <Copy v-else :size="14" />
+              </button>
             </div>
           </div>
           <div class="ip-card" v-if="metrics.ip.publicIPv6">
             <span class="ip-label">{{ t('network.publicIpv6') }}</span>
             <div class="ip-value-row">
               <span class="mono ip-v6">{{ metrics.ip.publicIPv6 }}</span>
-              <button class="copy-btn-sm" @click="copyText(metrics.ip.publicIPv6, 'ipv6')">{{ copiedField === 'ipv6' ? '✅' : '📋' }}</button>
+              <button class="copy-btn-sm" @click="copyText(metrics.ip.publicIPv6, 'ipv6')">
+                <Check v-if="copiedField === 'ipv6'" :size="14" />
+                <Copy v-else :size="14" />
+              </button>
             </div>
           </div>
           <div class="ip-card" v-if="metrics.ip.tailscale?.ip">
             <span class="ip-label">{{ t('network.tailscaleIp') }}</span>
             <div class="ip-value-row">
               <span class="mono">{{ metrics.ip.tailscale.ip }}</span>
-              <button class="copy-btn-sm" @click="copyText(metrics.ip.tailscale.ip, 'tsip')">{{ copiedField === 'tsip' ? '✅' : '📋' }}</button>
+              <button class="copy-btn-sm" @click="copyText(metrics.ip.tailscale.ip, 'tsip')">
+                <Check v-if="copiedField === 'tsip'" :size="14" />
+                <Copy v-else :size="14" />
+              </button>
             </div>
           </div>
           <div class="ip-card" v-if="metrics.ip.tailscale?.hostname">
             <span class="ip-label">{{ t('network.tailscaleHostname') }}</span>
             <div class="ip-value-row">
               <span class="mono">{{ metrics.ip.tailscale.hostname }}</span>
-              <button class="copy-btn-sm" @click="copyText(metrics.ip.tailscale.hostname, 'tshost')">{{ copiedField === 'tshost' ? '✅' : '📋' }}</button>
+              <button class="copy-btn-sm" @click="copyText(metrics.ip.tailscale.hostname, 'tshost')">
+                <Check v-if="copiedField === 'tshost'" :size="14" />
+                <Copy v-else :size="14" />
+              </button>
             </div>
           </div>
         </div>

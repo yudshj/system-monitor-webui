@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useSSE } from './composables/useSSE.js'
 import { useSettingsStore } from './stores/settings.js'
 import { useI18n } from './i18n/index.js'
+import { Monitor, Gpu, Globe, HardDrive, Settings } from 'lucide-vue-next'
 import AppHeader from './components/AppHeader.vue'
 import CpuMemoryPanel from './components/CpuMemoryPanel.vue'
 import GpuPanel from './components/GpuPanel.vue'
@@ -20,11 +21,11 @@ onMounted(async () => {
 })
 
 const tabs = [
-  { id: 'cpu', icon: '🖥️', labelKey: 'tabs.cpu' },
-  { id: 'gpu', icon: '🎮', labelKey: 'tabs.gpu' },
-  { id: 'network', icon: '🌐', labelKey: 'tabs.network' },
-  { id: 'disk', icon: '💾', labelKey: 'tabs.disk' },
-  { id: 'settings', icon: '⚙️', labelKey: 'tabs.settings' }
+  { id: 'cpu', icon: Monitor, labelKey: 'tabs.cpu' },
+  { id: 'gpu', icon: Gpu, labelKey: 'tabs.gpu' },
+  { id: 'network', icon: Globe, labelKey: 'tabs.network' },
+  { id: 'disk', icon: HardDrive, labelKey: 'tabs.disk' },
+  { id: 'settings', icon: Settings, labelKey: 'tabs.settings' }
 ]
 </script>
 

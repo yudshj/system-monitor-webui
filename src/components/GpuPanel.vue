@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
+import { Gpu, RotateCw, Copy, Check } from 'lucide-vue-next'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip } from 'chart.js'
 
@@ -49,8 +50,8 @@ const gpuChartData = computed(() => ({
   <div class="panel-grid single">
     <div class="card wide">
       <div class="card-header">
-        <h2>🎮 {{ t('gpu.title') }}</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.gpu }" @click="metrics.refreshField('gpu')" :title="t('common.refresh')">↻</button>
+        <h2><Gpu :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('gpu.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.gpu }" @click="metrics.refreshField('gpu')" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div v-if="metrics.gpu?.available === false" class="card-placeholder">{{ t('gpu.notAvailable') }}</div>
       <div v-else-if="metrics.gpu?.gpus?.length">
@@ -104,7 +105,11 @@ const gpuChartData = computed(() => ({
             {{ showRaw ? '▼ ' + t('gpu.hideRaw') : '▶ ' + t('gpu.showRaw') }}
           </button>
           <div v-if="showRaw" class="raw-output">
-            <button class="copy-btn" @click="copyRaw">{{ copySuccess ? '✅ ' + t('common.copied') : '📋 ' + t('common.copy') }}</button>
+            <button class="copy-btn" @click="copyRaw">
+              <Check v-if="copySuccess" :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+              <Copy v-else :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+              {{ copySuccess ? t('common.copied') : t('common.copy') }}
+            </button>
             <pre class="mono">{{ metrics.gpu.raw }}</pre>
           </div>
         </div>

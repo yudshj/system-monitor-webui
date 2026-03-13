@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
+import { HardDrive, RotateCw, Copy, Check, ChevronDown, ChevronRight } from 'lucide-vue-next'
 
 const metrics = useMetricsStore()
 const { t } = useI18n()
@@ -42,9 +43,9 @@ async function copyRaw(text, key) {
   <div class="panel-grid single">
     <div class="card wide">
       <div class="card-header">
-        <h2>💾 {{ t('disk.title') }}</h2>
+        <h2><HardDrive :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('disk.title') }}</h2>
         <button class="refresh-btn" :class="{ spinning: metrics.loading.disk || metrics.loading.smart }"
-                @click="() => { metrics.refreshField('disk'); metrics.refreshField('smart') }" :title="t('common.refresh')">↻</button>
+                @click="() => { metrics.refreshField('disk'); metrics.refreshField('smart') }" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div class="section" v-if="metrics.disk?.filesystems?.length">
         <h3>{{ t('disk.filesystems') }}</h3>
@@ -82,7 +83,10 @@ async function copyRaw(text, key) {
                 <span class="health-badge" :class="dev.health === 'PASSED' ? 'passed' : 'failed'">{{ dev.health }}</span>
                 <span v-if="dev.temperature != null" class="temp-badge mono">{{ dev.temperature }}°C</span>
                 <span v-if="dev.powerOnHours != null" class="hours-badge mono">{{ dev.powerOnHours?.toLocaleString() }}h</span>
-                <span class="expand-arrow">{{ expandedDevices[dev.device] ? '▼' : '▶' }}</span>
+                <span class="expand-arrow">
+                  <ChevronDown v-if="expandedDevices[dev.device]" :size="16" />
+                  <ChevronRight v-else :size="16" />
+                </span>
               </div>
             </div>
             <div v-if="expandedDevices[dev.device]" class="smart-details">
@@ -104,10 +108,16 @@ async function copyRaw(text, key) {
               </div>
               <div class="raw-smart-section">
                 <button class="toggle-btn" @click="toggleRaw(dev.device)">
-                  {{ showRawSmart[dev.device] ? '▼ ' + t('disk.hideRaw') : '▶ ' + t('disk.showRaw') }}
+                  <ChevronDown v-if="showRawSmart[dev.device]" :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+                  <ChevronRight v-else :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+                  {{ showRawSmart[dev.device] ? t('disk.hideRaw') : t('disk.showRaw') }}
                 </button>
                 <div v-if="showRawSmart[dev.device]" class="raw-output">
-                  <button class="copy-btn" @click="copyRaw(dev.raw, dev.device)">{{ copiedField === dev.device ? '✅ ' + t('common.copied') : '📋 ' + t('common.copy') }}</button>
+                  <button class="copy-btn" @click="copyRaw(dev.raw, dev.device)">
+                    <Check v-if="copiedField === dev.device" :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+                    <Copy v-else :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+                    {{ copiedField === dev.device ? t('common.copied') : t('common.copy') }}
+                  </button>
                   <pre class="mono">{{ dev.raw }}</pre>
                 </div>
               </div>

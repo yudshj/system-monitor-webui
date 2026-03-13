@@ -1,6 +1,7 @@
 <script setup>
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
+import { Eye } from 'lucide-vue-next'
 
 const props = defineProps({
   tabs: Array,
@@ -24,7 +25,8 @@ const { t } = useI18n()
       </div>
       <div class="header-status">
         <span class="viewer-badge" v-if="metrics.viewers > 0">
-          👁️ {{ metrics.viewers }} {{ t('app.viewers') }}
+          <Eye :size="14" style="vertical-align: -2px; margin-right: 4px;" />
+          {{ metrics.viewers }} {{ t('app.viewers') }}
         </span>
         <span class="connection-dot" :class="connected ? 'connected' : 'disconnected'"
               :title="connected ? t('app.connected') : t('app.disconnected')"></span>
@@ -38,7 +40,7 @@ const { t } = useI18n()
         :class="{ active: activeTab === tab.id }"
         @click="emit('update:activeTab', tab.id)"
       >
-        <span class="tab-icon">{{ tab.icon }}</span>
+        <component :is="tab.icon" :size="16" class="tab-icon" />
         <span class="tab-label">{{ t(tab.labelKey) }}</span>
       </button>
     </nav>

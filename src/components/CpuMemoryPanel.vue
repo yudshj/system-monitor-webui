@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue'
 import { useMetricsStore } from '../stores/metrics.js'
 import { useI18n } from '../i18n/index.js'
+import { Monitor, MemoryStick, Thermometer, Fan, RotateCw } from 'lucide-vue-next'
 import { Line } from 'vue-chartjs'
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip } from 'chart.js'
 
@@ -98,8 +99,8 @@ const gpuSensors = computed(() =>
     <!-- CPU Section -->
     <div class="card">
       <div class="card-header">
-        <h2>🖥️ {{ t('cpu.title') }}</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.cpu }" @click="metrics.refreshField('cpu')" :title="t('common.refresh')">↻</button>
+        <h2><Monitor :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('cpu.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.cpu }" @click="metrics.refreshField('cpu')" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div class="stat-row" v-if="metrics.cpu">
         <div class="stat-big">
@@ -125,8 +126,8 @@ const gpuSensors = computed(() =>
     <!-- Memory Section -->
     <div class="card">
       <div class="card-header">
-        <h2>🧠 {{ t('memory.title') }}</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.memory }" @click="metrics.refreshField('memory')" :title="t('common.refresh')">↻</button>
+        <h2><MemoryStick :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('memory.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.memory }" @click="metrics.refreshField('memory')" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div v-if="metrics.memory">
         <div class="stat-row">
@@ -155,8 +156,8 @@ const gpuSensors = computed(() =>
     <!-- Temperature Section -->
     <div class="card wide">
       <div class="card-header">
-        <h2>🌡️ {{ t('temperature.title') }}</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.temperature }" @click="metrics.refreshField('temperature')" :title="t('common.refresh')">↻</button>
+        <h2><Thermometer :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('temperature.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.temperature }" @click="metrics.refreshField('temperature')" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div v-if="metrics.temperature?.sensors?.length">
         <div class="stat-row" v-if="metrics.temperature.max != null">
@@ -195,8 +196,8 @@ const gpuSensors = computed(() =>
     <!-- Fans -->
     <div class="card" v-if="metrics.fans?.fans?.length">
       <div class="card-header">
-        <h2>🌀 {{ t('fans.title') }}</h2>
-        <button class="refresh-btn" :class="{ spinning: metrics.loading.fans }" @click="metrics.refreshField('fans')" :title="t('common.refresh')">↻</button>
+        <h2><Fan :size="18" style="vertical-align: -3px; margin-right: 6px;" />{{ t('fans.title') }}</h2>
+        <button class="refresh-btn" :class="{ spinning: metrics.loading.fans }" @click="metrics.refreshField('fans')" :title="t('common.refresh')"><RotateCw :size="14" /></button>
       </div>
       <div class="fan-list">
         <div class="fan-item" v-for="fan in metrics.fans.fans" :key="fan.name">

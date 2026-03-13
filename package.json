@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "express": "^5.1.0",
+    "lucide-vue-next": "^0.577.0",
     "systeminformation": "^5.25.11"
   },
   "devDependencies": {
